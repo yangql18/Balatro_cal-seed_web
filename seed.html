@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balatro 种子查种器</title>
+<style>
+  :root {
+    --bg: #1a1023; --panel: #241733; --panel2: #2d1e40; --line: #3d2a58;
+    --text: #f0e6ff; --dim: #9b86c0; --accent: #ff6b9d; --gold: #ffd166;
+    --green: #6be3a4; --blue: #6ec6ff; --red: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  html body {
+    margin: 0; background: var(--bg) !important; color: var(--text) !important;
+    font-family: "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  /* 顶部二分切换条 */
+  .sbar { display: flex; border-bottom: 2px solid var(--accent); }
+  .sbar a {
+    flex: 1; text-align: center; padding: 10px 0; font-size: 15px; font-weight: bold;
+    color: var(--dim); text-decoration: none; background: var(--panel);
+    border-right: 1px solid var(--line); transition: .15s;
+  }
+  .sbar a:last-child { border-right: none; }
+  .sbar a:hover { color: var(--text); background: var(--panel2); }
+  .sbar a.on { background: var(--accent); color: #fff; }
+  header { background: linear-gradient(90deg, #2d1e40, #4a2663); padding: 12px 20px; display: flex; align-items: baseline; gap: 16px; border-bottom: 2px solid var(--line); }
+  header h1 { margin: 0; font-size: 19px; color: var(--gold); }
+  header .sub { color: var(--dim); font-size: 12px; }
+  main.soul { display: grid; grid-template-columns: 370px 1fr; gap: 12px; padding: 12px; max-width: 1500px; margin: 0 auto; }
+  .panel { background: var(--panel) !important; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; color: var(--text) !important; }
+  .panel h2, html h2 {
+    margin: 0 0 8px !important; font-size: 14px !important; color: var(--accent) !important;
+    background: transparent !important; border-bottom: 1px dashed var(--line); padding-bottom: 6px; text-align: left !important; font-weight: bold;
+  }
+  label { color: var(--dim) !important; font-size: 13px !important; }
+  .f { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+  html input, html select, html textarea {
+    background: var(--panel2) !important; color: var(--text) !important;
+    border: 1px solid var(--line) !important; border-radius: 6px !important;
+    padding: 5px 7px !important; font-size: 13px !important; font-family: inherit !important;
+  }
+  html input:focus, html select:focus, html textarea:focus { outline: none !important; border-color: var(--accent) !important; box-shadow: 0 0 4px rgba(255,107,157,.4) !important; }
+  html button {
+    background: var(--accent) !important; color: #fff !important; border: none !important;
+    padding: 7px 13px !important; border-radius: 8px !important; font-size: 14px !important;
+    font-family: inherit !important; font-weight: bold; cursor: pointer;
+  }
+  html button:hover { filter: brightness(1.15); }
+  html button.sec, html button.mini { background: var(--panel2) !important; border: 1px solid var(--line) !important; color: var(--text) !important; font-weight: normal; }
+  html button:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
+  #status { font-size: 12px; color: var(--gold); }
+  /* 每底注块内「显示牌数」输入 */
+  .ante-count { display: inline-flex; align-items: center; gap: 5px; }
+  .ante-count label { font-size: 12px; }
+  .ante-count input { width: 66px; text-align: center; }
+  /* 幻灵勾选名单 */
+  .spec-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 8px; margin-top: 8px;
+    background: rgba(0,0,0,.18); border-radius: 6px; padding: 8px; }
+  .spec-list[hidden] { display: none; }
+  .spec-list label { display: flex; align-items: center; gap: 4px; font-size: 12px !important; color: var(--text) !important; cursor: pointer; }
+  .spec-list input { width: auto !important; padding: 0 !important; }
+  .neg-h { font-size: 12px; color: var(--gold); font-weight: bold; margin: 8px 0 2px; }
+  #hunt-roster, #neg-roster { flex: 1; min-width: 0; }
+  #outputBox { width: 100%; min-height: 180px; font-family: Consolas, monospace; font-size: 12px; white-space: pre; }
+  /* 覆盖 UI.js 注入的灰色系样式 */
+  #scrollingContainer { background: var(--panel) !important; border: 1px solid var(--line) !important; margin-top: 8px !important; padding: 8px !important; }
+  .queueContainer { background: var(--panel2) !important; border: 1px solid var(--line) !important; }
+  .queueTitle { color: var(--gold) !important; }
+  .queueInfo, .queueItem { color: var(--text) !important; }
+  .packItem { color: var(--text) !important; }
+  /* 序号徽标 / 分组分割线 / 查询命中 */
+  .queueItem .shopIdx { color: var(--gold); font-weight: bold; font-size: 13px; margin-top: 0; line-height: 1.2; }
+  .queueItem.hit { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; background: rgba(255,209,102,.12); }
+  .groupSep { flex: 0 0 auto; width: 2px; min-height: 100px; background: var(--accent); opacity: .55; margin: 0 8px; border-radius: 2px; }
+
+  .hunt-box { position: relative; flex: 1; min-width: 220px; }
+  .hunt-box input { width: 100%; }
+  .hunt-suggest { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; max-height: 220px; overflow-y: auto;
+    background: var(--bg); border: 1px solid var(--accent); border-radius: 6px; margin-top: 3px; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+  .hunt-suggest div { padding: 5px 8px; cursor: pointer; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hunt-suggest div:hover { background: var(--accent); color: #fff; }
+  .hunt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .hunt-chips:empty { display: none; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
+    background: rgba(255,107,157,.18); border: 1px solid var(--accent); font-size: 13px; }
+  .chip b { cursor: pointer; font-weight: normal; color: #ffd166; }
+  .chip i { cursor: pointer; font-style: normal; opacity: .8; }
+  .chip i:hover { opacity: 1; color: #ff6b9d; }
+  .hunt-results { margin-top: 6px; font-size: 13px; line-height: 1.7; max-height: 180px; overflow-y: auto;
+    background: rgba(0,0,0,.18); border-radius: 6px; padding: 6px 9px; }
+  .hunt-results:empty { display: none; }
+  .hunt-results .qline { white-space: nowrap; overflow-x: auto; }
+  .hunt-results .qname { color: var(--accent); font-weight: bold; margin-right: 6px; }
+  .hunt-results .qpos { color: var(--gold); }
+  .hunt-results .qnone { opacity: .75; }
+  /* 常用（收藏）星星 */
+  .hunt-suggest div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .hunt-suggest div > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .favstar { flex: 0 0 auto; color: var(--gold); opacity: .45; font-size: 14px; padding: 0 2px; }
+  .favstar.on { opacity: 1; }
+  .chip.fav { background: rgba(255,209,102,.15); border-color: var(--gold); }
+  /* 底注查看条（双指针滑动） */
+  .ante-bar { margin: 2px 0 10px; }
+  .ante-bar-head { font-size: 13px; color: var(--dim); margin-bottom: 6px; }
+  .ante-bar-head b { color: var(--gold); font-size: 14px; margin-left: 6px; }
+  .ante-track { position: relative; height: 26px; background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; touch-action: none; user-select: none; }
+  .ante-fill { position: absolute; top: 4px; bottom: 4px; left: 0; width: 100%; background: rgba(255,107,157,.35); border-radius: 999px; pointer-events: none; }
+  .ante-thumb { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; cursor: grab; z-index: 2; box-shadow: 0 1px 4px rgba(0,0,0,.55); }
+  .ante-thumb:active { cursor: grabbing; }
+  .ante-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-top: 3px; }
+  /* 网格列允许收缩，防止内容把页面横向撑长 */
+  main.soul > section { min-width: 0; }
+  @media (max-width: 1100px) { main.soul { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="sbar">
+  <a href="index.html">计算器</a>
+  <a href="seed.html" class="on">查种器</a>
+</nav>
+<header>
+  <h1>Balatro 种子查种器</h1>
+  <span class="sub">Immolate 引擎 · 中文界面 · 小丑/卡牌图片渲染 · 默认等离子牌组 39 底注</span>
+</header>
+
+<main class="soul">
+  <!-- 左：设置 -->
+  <section>
+    <div class="panel">
+      <h2>设置</h2>
+      <label class="f">种子（8 位，字母数字）
+        <input type="text" id="seed" maxlength="8" pattern="[A-Za-z1-9]{1,8}" placeholder="如 ABCD1234">
+      </label>
+      <label class="f">牌组
+        <select id="deck"></select>
+      </label>
+      <label class="f">阶注
+        <select id="stake"></select>
+      </label>
+      <label class="f">版本
+        <select id="version">
+          <option value="10106">1.0.1f</option>
+          <option value="10103">1.0.1c</option>
+          <option value="10014">1.0.0n</option>
+        </select>
+      </label>
+      <label class="f">商店栏数（每组几张牌）
+        <select id="group-size">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+        </select>
+      </label>
+      <div class="row">
+        <button id="analyzeButton" disabled>分析</button>
+        <span id="status">引擎加载中…</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>负片检索</h2>
+      <div class="row">
+        <div class="hunt-box">
+          <input type="text" id="neg-hunt" autocomplete="off" placeholder="搜索负片牌名（可多选，点建议加入）">
+          <div id="neg-suggest" class="hunt-suggest" hidden></div>
+        </div>
+        <input type="number" id="neg-limit" min="1" max="9999" value="100" title="每底注最多检索到第几个" style="width:86px" placeholder="范围">
+        <button id="neg-btn">查询</button>
+      </div>
+      <div id="neg-favs" class="hunt-chips"></div>
+      <div id="neg-chips" class="hunt-chips"></div>
+      <div class="neg-h">① 按牌列举（选中的牌 → 第 X 底注第 Y 个）</div>
+      <div id="neg-by-card" class="hunt-results"></div>
+      <div class="neg-h">② 按底注列举（每底注全部负片）</div>
+      <div id="neg-by-ante" class="hunt-results"></div>
+    </div>
+
+    <div class="panel">
+      <h2>幻灵牌检索</h2>
+      <div class="row">
+        <button id="spec-toggle" type="button">展开名单 ▾</button>
+        <span style="font-size:12px;color:var(--dim)">勾选要检索的幻灵牌</span>
+      </div>
+      <div id="spec-list" class="spec-list" hidden></div>
+      <div id="spec-results" class="hunt-results" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- 右：输出 -->
+  <section>
+    <textarea id="outputBox" rows="4" readonly hidden></textarea>
+    <div class="panel">
+      <h2>渲染视图（中文 + 图片）</h2>
+      <div class="ante-bar">
+        <div class="ante-bar-head">底注查看范围（拖动两根指针，左≤右）<b id="ante-range-text">1-39</b></div>
+        <div class="ante-track" id="ante-track">
+          <div class="ante-fill" id="ante-fill"></div>
+          <div class="ante-thumb" id="ante-thumb-lo" title="下限"></div>
+          <div class="ante-thumb" id="ante-thumb-hi" title="上限"></div>
+        </div>
+        <div class="ante-ticks"><span>1</span><span>39</span></div>
+      </div>
+      <div class="row">
+        <div class="hunt-box">
+          <input type="text" id="hunt" autocomplete="off" placeholder="搜索小丑：输入过滤，回车或点建议加入（可多选）">
+          <div id="hunt-suggest" class="hunt-suggest" hidden></div>
+        </div>
+        <input type="number" id="hunt-limit" min="1" max="9999" value="100" title="最大检索范围：每底注最多检索到第几个" style="width:86px" placeholder="范围">
+        <button id="hunt-btn">查询</button>
+      </div>
+      <div class="row">
+        <select id="hunt-roster" title="名单：点击选项直接检索，常用（★）置顶">
+          <option value="">— 名单（点击展开，选择即检索）—</option>
+        </select>
+      </div>
+      <div id="hunt-favs" class="hunt-chips"></div>
+      <div id="hunt-chips" class="hunt-chips"></div>
+      <div id="hunt-results" class="hunt-results"></div>
+      <div id="render-box"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Immolate WASM 全局对象（glue 会读取 typeof Immolate）
+  var instantAnalysis = false;
+  var suppressRender = false;
+  var Immolate = {
+    onRuntimeInitialized: function () {
+      var btn = document.getElementById('analyzeButton');
+      var st = document.getElementById('status');
+      if (btn) btn.disabled = false;
+      if (st) st.textContent = '引擎就绪 ✓';
+      // autoRun 定义在下方 IIFE 中（解析期才执行），经 window 钩子调用
+      if (instantAnalysis && window.soulAutoRun) window.soulAutoRun();
+    },
+    onAbort: function (a) {
+      var st = document.getElementById('status');
+      if (st) st.textContent = '引擎加载失败：请用本地服务器打开（node serve.js 后访问 http://127.0.0.1:8765/seed.html），直接双击 file:// 无法加载 WASM';
+    }
+  };
+</script>
+<script src="soul/zh.js"></script>
+<script src="soul/engine.js"></script>
+<script src="soul/wasm-bin.js"></script>
+<script src="soul/immolate.js"></script>
+<script src="soul/UI.js" defer></script>
+<script>
+(function () {
+  var DECKS = ['Red Deck','Blue Deck','Yellow Deck','Green Deck','Black Deck','Magic Deck','Nebula Deck','Ghost Deck','Abandoned Deck','Checkered Deck','Zodiac Deck','Painted Deck','Anaglyph Deck','Plasma Deck','Erratic Deck'];
+  var STAKES = ['White Stake','Red Stake','Green Stake','Black Stake','Blue Stake','Purple Stake','Orange Stake','Gold Stake'];
+  var DEFAULT_CARDS = 30;
+  var MAX_CARDS = 9999; // 显示牌数上限（与检索/负片上限一致，防止 ?cards= 超大值挂死页）
+  var MAX_ANTE = 39; // 分析固定生成 39 个底注；显示范围由「底注查看条」控制
+
+  var seedInput = document.getElementById('seed');
+  var deckSelect = document.getElementById('deck');
+  var stakeSelect = document.getElementById('stake');
+  var versionSelect = document.getElementById('version');
+  var outputBox = document.getElementById('outputBox');
+  var analyzeButton = document.getElementById('analyzeButton');
+
+  function zh(s) { return (window.SOUL_ZH && window.SOUL_ZH[s]) || s; }
+
+  // 下拉框：显示中文，值保留英文（WASM 需要英文）
+  DECKS.forEach(function (d) {
+    var o = document.createElement('option');
+    o.value = d; o.textContent = zh(d);
+    if (d === 'Plasma Deck') { o.selected = true; o.setAttribute('selected', 'selected'); }
+    deckSelect.appendChild(o);
+  });
+  STAKES.forEach(function (s) {
+    var o = document.createElement('option');
+    o.value = s; o.textContent = zh(s);
+    stakeSelect.appendChild(o);
+  });
+
+  // ---------- 每底注显示牌数（state 持久：滑动条只隐藏容器，不会清掉这里的值） ----------
+  // gen = max(显示牌数, 检索上限)：多生成的牌不显示，但搜索/负片/幻灵能查到
+  var anteCounts = {};
+  function displayCount(a) {
+    var v = anteCounts[a];
+    if (v == null) return DEFAULT_CARDS;
+    return Math.max(0, Math.min(MAX_CARDS, v));
+  }
+  window.soulAnteGetDisplay = function (a) {
+    a = parseInt(a, 10);
+    return isNaN(a) ? DEFAULT_CARDS : displayCount(a);
+  };
+  window.soulAnteDisplayRow = function (a) {
+    a = parseInt(a, 10);
+    var wrap = document.createElement('span');
+    wrap.className = 'ante-count';
+    var lab = document.createElement('label');
+    lab.textContent = '显示牌数';
+    lab.title = '本底注显示的商店卡牌数（超出部分不显示，但搜索仍可命中）';
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '0'; inp.max = '9999';
+    inp.value = String(displayCount(a));
+    inp.title = lab.title;
+    inp.addEventListener('input', function () {
+      var v = parseInt(inp.value, 10);
+      if (isNaN(v) || v < 0) return;
+      v = Math.min(MAX_CARDS, v);
+      anteCounts[a] = v;
+      if (genFor(a) > (lastGen[a - 1] || 0)) scheduleRegen();
+      else if (window.soulApplyAnteDisplay) window.soulApplyAnteDisplay(a);
+    });
+    wrap.appendChild(lab); wrap.appendChild(inp);
+    return wrap;
+  };
+
+  // 每底注实际生成数量 = max(显示牌数, 检索上限, 负片上限)
+  var lastGen = [];
+  function searchLimitMax() {
+    var a = queryLimit();
+    var b = negLimitValue();
+    return Math.max(a, b);
+  }
+  function genFor(a) { return Math.max(displayCount(a), searchLimitMax()); }
+  function genCards() {
+    var out = [];
+    for (var i = 1; i <= MAX_ANTE; i++) out.push(genFor(i));
+    return out;
+  }
+  function needsRegen() {
+    var g = genCards();
+    for (var i = 0; i < g.length; i++) if (g[i] > (lastGen[i] || 0)) return true;
+    return false;
+  }
+  var regenTimer = null;
+  function scheduleRegen() {
+    if (!seedInput.value) return;
+    clearTimeout(regenTimer);
+    regenTimer = setTimeout(function () {
+      if (needsRegen()) autoRun();
+    }, 700);
+  }
+
+  // 解锁状态：默认全部解锁（原「修改解锁」面板已移除；旧链接的 unlocks 参数仍兼容）
+  var OPTIONS = SOUL.OPTIONS;
+  var selectedOptions = OPTIONS.map(function () { return true; });
+
+  // 解码 ?unlocks=：兼容两种格式。
+  //  1) 正确格式（8 字节，末尾不足字节左对齐补 0）——标准位打包。
+  //  2) 旧版 9 字节格式（原站 copyLink 的 bug）：第 8 字节=末 5 位值(0..31)，
+  //     第 9 字节=该值左移 3 位。此时真正的位 56..60 存在第 8 字节的数值里。
+  function decodeUnlocks(b64) {
+    var s = atob(b64);
+    var bytes = [];
+    for (var i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i));
+    var bitStr = '';
+    var legacy9 = bytes.length === 9 && bytes[7] < 32 && bytes[8] === ((bytes[7] << 3) & 0xFF);
+    if (legacy9) {
+      for (i = 0; i < 7; i++) bitStr += bytes[i].toString(2).padStart(8, '0');
+      bitStr += bytes[7].toString(2).padStart(5, '0'); // 位 56..60
+    } else {
+      for (i = 0; i < bytes.length; i++) bitStr += bytes[i].toString(2).padStart(8, '0');
+      var padLen = bitStr.length % 8;
+      if (padLen > 0) bitStr = bitStr.slice(0, -padLen);
+    }
+    return bitStr.split('').map(function (b) { return b === '1'; });
+  }
+
+  // ---------- 分析 ----------
+  function filterSeed(seed) {
+    return seed.replace(/[^A-Za-z0-9]/g, '').toUpperCase().replace(/0/g, 'O').slice(0, 8);
+  }
+  seedInput.addEventListener('input', function () { seedInput.value = filterSeed(seedInput.value); });
+
+  function fillOutput() {
+    var g = genCards();
+    outputBox.value = SOUL.buildOutput({
+      seed: seedInput.value,
+      ante: MAX_ANTE,
+      cards: g,
+      deck: deckSelect.value,
+      stake: stakeSelect.value,
+      version: parseInt(versionSelect.value, 10),
+      selected: selectedOptions
+    });
+    lastGen = g;
+  }
+  function showErr(e) {
+    var msg = e && e.message ? e.message : String(e);
+    var st = document.getElementById('status');
+    if (st) st.textContent = '分析失败: ' + msg;
+    if (window.console) console.error(e);
+  }
+  function onAnalyze() {
+    if (suppressRender) return;
+    try { fillOutput(); }
+    catch (e) { showErr(e); }
+  }
+  function setStatus(t) { var st = document.getElementById('status'); if (st) st.textContent = t; }
+  function autoRun() {
+    if (!seedInput.value) { setStatus('未找到种子参数'); return; }
+    setStatus('autoRun: ' + seedInput.value);
+    try { fillOutput(); } catch (e) { showErr(e); return; }
+    setStatus('已生成输出 ' + outputBox.value.length + ' 字符');
+    suppressRender = true;
+    try { analyzeButton.click(); } // 触发 UI.js 的渲染（我们的监听会跳过）
+    finally { suppressRender = false; }
+    setStatus('渲染完成, 队列=' + document.querySelectorAll('#scrollingContainer .queueContainer').length);
+  }
+  window.soulAutoRun = autoRun;
+  // 牌组/难度/版本改动会改变种子输出 → 立即重新生成渲染
+  [deckSelect, stakeSelect, versionSelect].forEach(function (sel) {
+    sel.addEventListener('change', function () { if (seedInput.value) autoRun(); });
+  });
+  analyzeButton.addEventListener('click', onAnalyze);
+  window.addEventListener('error', function (ev) { showErr(ev.error || ev.message); });
+  window.addEventListener('unhandledrejection', function (ev) { showErr(ev.reason); });
+
+  // ---------- 底注查看条（1-39 双指针：左≤右，闭区间过滤显示） ----------
+  var ANTE_MAX = 39;
+  var anteLo = 1, anteHi = 39;
+  var anteTrack = document.getElementById('ante-track');
+  var anteThumbLo = document.getElementById('ante-thumb-lo');
+  var anteThumbHi = document.getElementById('ante-thumb-hi');
+  var anteFill = document.getElementById('ante-fill');
+  var anteRangeText = document.getElementById('ante-range-text');
+  function antePos(v) { return ((v - 1) / (ANTE_MAX - 1)) * 100; }
+  function anteInRange(a) {
+    a = parseInt(a, 10);
+    if (isNaN(a)) return true;
+    return a >= anteLo && a <= anteHi;
+  }
+  function updateAnteBar() {
+    anteThumbLo.style.left = antePos(anteLo) + '%';
+    anteThumbHi.style.left = antePos(anteHi) + '%';
+    anteFill.style.left = antePos(anteLo) + '%';
+    anteFill.style.width = (antePos(anteHi) - antePos(anteLo)) + '%';
+    anteRangeText.textContent = anteLo + '-' + anteHi;
+  }
+  function applyAnteFilter() {
+    document.querySelectorAll('#scrollingContainer .queueContainer').forEach(function (qc) {
+      qc.style.display = anteInRange(qc.dataset.ante) ? '' : 'none';
+    });
+  }
+  function anteFromX(x) {
+    var r = anteTrack.getBoundingClientRect();
+    var t = r.width ? (x - r.left) / r.width : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.round(1 + t * (ANTE_MAX - 1));
+  }
+  function setAnteRange() { updateAnteBar(); applyAnteFilter(); runQuery(); negRun(); specRun(); }
+  function bindAnteThumb(el, isLo) {
+    el.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      function move(ev) {
+        var v = anteFromX(ev.clientX);
+        if (isLo) anteLo = Math.min(v, anteHi);   // 指针不能反过来：左≤右
+        else anteHi = Math.max(v, anteLo);
+        setAnteRange();
+      }
+      function up() {
+        el.removeEventListener('pointermove', move);
+        el.removeEventListener('pointerup', up);
+        el.removeEventListener('pointercancel', up);
+      }
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+    });
+  }
+  bindAnteThumb(anteThumbLo, true);
+  bindAnteThumb(anteThumbHi, false);
+  anteTrack.addEventListener('pointerdown', function (e) {
+    if (e.target === anteThumbLo || e.target === anteThumbHi) return;
+    var v = anteFromX(e.clientX);
+    if (Math.abs(v - anteLo) <= Math.abs(v - anteHi)) anteLo = Math.min(v, anteHi);
+    else anteHi = Math.max(v, anteLo);
+    setAnteRange();
+  });
+  updateAnteBar();
+
+  // ---------- 查询：搜索栏（可单选可多选）+ 最大检索范围 + 查询 ----------
+  var huntInput = document.getElementById('hunt');
+  var suggestBox = document.getElementById('hunt-suggest');
+  var chipsBox = document.getElementById('hunt-chips');
+  var favsBox = document.getElementById('hunt-favs');
+  var resultBox = document.getElementById('hunt-results');
+  var limitInput = document.getElementById('hunt-limit');
+  var chips = []; // [{en, zh}] 已选中的查询项
+
+  // ---------- 常用（收藏）：与计算器一致，localStorage 持久化，每次查询自动显示其位置 ----------
+  var favKey = 'seed_hunt_favs';
+  var favs = [];
+  try { favs = JSON.parse(localStorage.getItem(favKey) || '[]'); } catch (e) { favs = []; }
+  if (!Array.isArray(favs)) favs = [];
+  function saveFavs() { try { localStorage.setItem(favKey, JSON.stringify(favs)); } catch (e) {} }
+  function isFav(en) {
+    var l = String(en).toLowerCase();
+    return favs.some(function (f) { return String(f).toLowerCase() === l; });
+  }
+  function toggleFav(en) {
+    if (isFav(en)) favs = favs.filter(function (f) { return String(f).toLowerCase() !== String(en).toLowerCase(); });
+    else favs.push(en);
+    saveFavs(); renderFavs(); runQuery();
+  }
+  function renderFavs() {
+    if (!favsBox) return;
+    favsBox.innerHTML = '';
+    favs.forEach(function (f, i) {
+      var sp = document.createElement('span');
+      sp.className = 'chip fav';
+      var b = document.createElement('b');
+      b.textContent = '★ ' + zhName(f);
+      b.title = f + '（每次查询自动显示其位置，点 ✕ 取消）';
+      var x = document.createElement('i');
+      x.textContent = '✕';
+      x.addEventListener('click', function () { favs.splice(i, 1); saveFavs(); renderFavs(); runQuery(); });
+      sp.appendChild(b); sp.appendChild(x);
+      favsBox.appendChild(sp);
+    });
+    renderRoster();
+  }
+  renderFavs();
+
+  // ---------- 名单栏（右侧）：常用(★)置顶 + 其余按中文排序，点选项即检索 ----------
+  var rosterSel = document.getElementById('hunt-roster');
+  function renderRoster() {
+    if (!rosterSel) return;
+    var keep = rosterSel.value;
+    rosterSel.innerHTML = '';
+    var ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = '— 名单（点击展开，选择即检索）—';
+    rosterSel.appendChild(ph);
+    var seen = {};
+    function add(en, sortKey) {
+      if (!en || seen[en]) return;
+      seen[en] = 1;
+      var o = document.createElement('option');
+      o.value = en;
+      var z = zhName(en);
+      o.textContent = (isFav(en) ? '★ ' : '') + (z !== en ? z + ' (' + en + ')' : en);
+      o.dataset.sort = sortKey || z;
+      rosterSel.appendChild(o);
+    }
+    favs.forEach(function (f) { add(f, ''); });
+    var rest = [];
+    function push(n) { if (n && !seen[n]) rest.push(n); }
+    (window.SOUL_CATALOG || []).forEach(push);
+    distinctNames().forEach(push);
+    rest.sort(function (a, b) {
+      return String(zhName(a)).localeCompare(String(zhName(b)), 'zh-Hans-CN');
+    });
+    rest.forEach(function (n) { add(n); });
+    rosterSel.value = keep || '';
+  }
+  rosterSel.addEventListener('change', function () {
+    if (!rosterSel.value) return;
+    addChip(rosterSel.value);
+    rosterSel.selectedIndex = 0;
+    runQuery();
+  });
+  renderRoster();
+
+  function zhName(s) {
+    try { return (window.SOUL_ZH && window.SOUL_ZH[s]) || s; } catch (e) { return s; }
+  }
+  function cnNum(n) { // 1~999 -> 中文数字（底注用：第一、第二…）
+    var d = '零一二三四五六七八九';
+    n = parseInt(n, 10);
+    if (isNaN(n) || n <= 0) return '?';
+    if (n < 10) return d[n];
+    if (n < 20) return '十' + (n % 10 ? d[n % 10] : '');
+    if (n < 100) return d[Math.floor(n / 10)] + '十' + (n % 10 ? d[n % 10] : '');
+    var h = d[Math.floor(n / 100)] + '百', r = n % 100;
+    if (!r) return h;
+    if (r < 10) return h + '零' + d[r];
+    if (r < 20) return h + '一十' + (r % 10 ? d[r % 10] : '');
+    return h + cnNum(r);
+  }
+  function queryLimit() {
+    var v = parseInt(limitInput.value, 10);
+    return isNaN(v) || v < 1 ? 100 : Math.min(9999, v);
+  }
+  function distinctNames() {
+    var seen = {}, out = [];
+    document.querySelectorAll('#scrollingContainer .queueItem, #scrollingContainer .packCard').forEach(function (it) {
+      if (!anteInRange(it.dataset.ante)) return;
+      var en = it.dataset.en;
+      if (en && !seen[en]) { seen[en] = 1; out.push(en); }
+    });
+    return out;
+  }
+  function renderChips() {
+    chipsBox.innerHTML = '';
+    chips.forEach(function (c, i) {
+      var sp = document.createElement('span');
+      sp.className = 'chip';
+      var b = document.createElement('b');
+      b.textContent = c.zh || c.en;
+      b.title = c.en;
+      var x = document.createElement('i');
+      x.textContent = '✕';
+      x.addEventListener('click', function () { chips.splice(i, 1); renderChips(); runQuery(); });
+      sp.appendChild(b); sp.appendChild(x);
+      chipsBox.appendChild(sp);
+    });
+  }
+  // 名字解析：先渲染列表（英/中），再全集目录；返回 {en, resolved}（找不到就原样返回）
+  function resolveName(raw) {
+    raw = (raw || '').trim();
+    if (!raw) return null;
+    var names = distinctNames(), i;
+    for (i = 0; i < names.length; i++) if (names[i].toLowerCase() === raw.toLowerCase()) return { en: names[i], resolved: true };
+    for (i = 0; i < names.length; i++) if (zhName(names[i]) === raw) return { en: names[i], resolved: true };
+    var cat = window.SOUL_CATALOG || [];
+    for (i = 0; i < cat.length; i++) {
+      if (cat[i].toLowerCase() === raw.toLowerCase() || zhName(cat[i]) === raw) return { en: cat[i], resolved: true };
+    }
+    return { en: raw, resolved: false };
+  }
+  function addChip(raw) {
+    var r = resolveName(raw);
+    if (!r) return;
+    var en = r.en;
+    var dup = chips.some(function (c) { return c.en.toLowerCase() === en.toLowerCase(); });
+    if (dup) return;
+    chips.push({ en: en, zh: r.resolved ? zhName(en) : raw, resolved: r.resolved });
+    renderChips();
+  }
+  // 本次要查的目标：手选 chips + 常用 favs（去重，常用每次自动带上）
+  function queryTargets() {
+    var list = chips.slice();
+    favs.forEach(function (f) {
+      var dup = list.some(function (c) { return c.en.toLowerCase() === String(f).toLowerCase(); });
+      if (!dup) list.push({ en: f, zh: zhName(f), fav: true, resolved: true });
+    });
+    return list;
+  }
+  function runQuery() {
+    var items = document.querySelectorAll('#scrollingContainer .queueItem, #scrollingContainer .packCard');
+    items.forEach(function (it) { it.classList.remove('hit'); });
+    resultBox.innerHTML = '';
+    var targets = queryTargets();
+    if (!targets.length) return;
+    var limit = queryLimit();
+    targets.forEach(function (c) {
+      var line = document.createElement('div');
+      line.className = 'qline';
+      var nm = document.createElement('span');
+      nm.className = 'qname';
+      nm.textContent = (c.fav ? '★ ' : '') + (c.zh || c.en);
+      line.appendChild(nm);
+      var q = c.en.toLowerCase(), locs = [], exact = !!c.resolved;
+      items.forEach(function (it) {
+        if (!anteInRange(it.dataset.ante)) return;
+        var idx = parseInt(it.dataset.idx || '0', 10);
+        var en = (it.dataset.en || '').toLowerCase();
+        var txt = (it.textContent || '').toLowerCase();
+        var ok = exact ? en === q : (en === q || en.indexOf(q) >= 0 || txt.indexOf(q) >= 0);
+        var isPack = it.classList.contains('packCard');
+        var posOk = isPack || (idx > 0 && idx <= limit);
+        if (ok && posOk) {
+          it.classList.add('hit');
+          locs.push(isPack
+            ? ('第' + cnNum(it.dataset.ante) + '底注·包内' + (it.dataset.pack ? '（' + zhName(it.dataset.pack) + '）' : ''))
+            : ('第' + cnNum(it.dataset.ante) + '底注第' + idx + '个'));
+        }
+      });
+      if (locs.length) {
+        line.appendChild(document.createTextNode(locs.join('，')));
+      } else {
+        var no = document.createElement('span');
+        no.className = 'qnone';
+        no.textContent = '（未找到；限每底注第 ' + limit + ' 个以内）';
+        line.appendChild(no);
+      }
+      resultBox.appendChild(line);
+    });
+  }
+  function hideSuggest() { suggestBox.hidden = true; suggestBox.innerHTML = ''; }
+  function showSuggest() {
+    var q = huntInput.value.trim().toLowerCase();
+    var merged = [], seen = {};
+    function push(n) { if (n && !seen[n]) { seen[n] = 1; merged.push(n); } }
+    if (!q) {
+      // 空输入：只列常用（方便快速查看/取消）
+      favs.forEach(push);
+      if (!merged.length) { hideSuggest(); return; }
+    } else {
+      favs.forEach(push); // 常用排最前
+      (window.SOUL_CATALOG || []).forEach(push); // 全集目录（当前种子里没有的牌也能搜）
+      distinctNames().forEach(push);
+      merged = merged.filter(function (n) {
+        return n.toLowerCase().indexOf(q) >= 0 || zhName(n).toLowerCase().indexOf(q) >= 0;
+      }).slice(0, 25);
+      if (!merged.length) { hideSuggest(); return; }
+    }
+    suggestBox.innerHTML = '';
+    merged.forEach(function (n) {
+      var d = document.createElement('div');
+      d.dataset.name = n;
+      var t = document.createElement('span');
+      var z = zhName(n);
+      t.textContent = z !== n ? z + ' (' + n + ')' : n;
+      var star = document.createElement('span');
+      star.className = 'favstar' + (isFav(n) ? ' on' : '');
+      star.textContent = isFav(n) ? '★' : '☆';
+      star.title = isFav(n) ? '取消常用' : '设为常用（每次查询自动显示其位置）';
+      star.addEventListener('mousedown', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        toggleFav(n);
+        showSuggest();
+      });
+      d.appendChild(t); d.appendChild(star);
+      d.addEventListener('mousedown', function (e) {
+        if (e.target === star) return;
+        e.preventDefault();
+        addChip(n);
+        huntInput.value = '';
+        hideSuggest();
+        runQuery();
+      });
+      suggestBox.appendChild(d);
+    });
+    suggestBox.hidden = false;
+  }
+  huntInput.addEventListener('input', showSuggest);
+  huntInput.addEventListener('focus', showSuggest);
+  huntInput.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
+  huntInput.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var first = suggestBox.hidden ? null : suggestBox.querySelector('div');
+    addChip(first ? first.dataset.name : huntInput.value);
+    huntInput.value = '';
+    hideSuggest();
+    runQuery();
+  });
+  document.getElementById('hunt-btn').addEventListener('click', function () {
+    if (huntInput.value.trim()) { addChip(huntInput.value); huntInput.value = ''; hideSuggest(); }
+    runQuery();
+  });
+  // 检索上限变大 → 生成量(gen)可能不够 → 需要重新分析；变小不用
+  limitInput.addEventListener('input', function () { scheduleRegen(); runQuery(); });
+  limitInput.addEventListener('change', function () { scheduleRegen(); runQuery(); negRun(); });
+
+  // ---------- 负片检索（左侧；常用独立存 seed_neg_favs，与右侧互不干扰） ----------
+  var negInput = document.getElementById('neg-hunt');
+  var negSuggest = document.getElementById('neg-suggest');
+  var negChipsBox = document.getElementById('neg-chips');
+  var negFavsBox = document.getElementById('neg-favs');
+  var negByCard = document.getElementById('neg-by-card');
+  var negByAnte = document.getElementById('neg-by-ante');
+  var negLimitInput = document.getElementById('neg-limit');
+  var negChips = [];
+  var negFavKey = 'seed_neg_favs';
+  var negFavs = [];
+  try { negFavs = JSON.parse(localStorage.getItem(negFavKey) || '[]'); } catch (e) { negFavs = []; }
+  if (!Array.isArray(negFavs)) negFavs = [];
+
+  function negLimitValue() {
+    var v = negLimitInput ? parseInt(negLimitInput.value, 10) : NaN;
+    return isNaN(v) || v < 1 ? 100 : Math.min(9999, v);
+  }
+  function negSaveFavs() { try { localStorage.setItem(negFavKey, JSON.stringify(negFavs)); } catch (e) {} }
+  function negIsFav(en) {
+    var l = String(en).toLowerCase();
+    return negFavs.some(function (f) { return String(f).toLowerCase() === l; });
+  }
+  function negToggleFav(en) {
+    if (negIsFav(en)) negFavs = negFavs.filter(function (f) { return String(f).toLowerCase() !== String(en).toLowerCase(); });
+    else negFavs.push(en);
+    negSaveFavs(); negRenderFavs(); negRenderChips(); negRun();
+  }
+  function negRenderFavs() {
+    negFavsBox.innerHTML = '';
+    negFavs.forEach(function (f, i) {
+      var sp = document.createElement('span');
+      sp.className = 'chip fav';
+      var b = document.createElement('b');
+      b.textContent = '★ ' + zhName(f);
+      b.title = f + '（每次查询自动显示其位置，点 ✕ 取消）';
+      var x = document.createElement('i');
+      x.textContent = '✕';
+      x.addEventListener('click', function () { negFavs.splice(i, 1); negSaveFavs(); negRenderFavs(); negRun(); });
+      sp.appendChild(b); sp.appendChild(x);
+      negFavsBox.appendChild(sp);
+    });
+  }
+  function negRenderChips() {
+    negChipsBox.innerHTML = '';
+    negChips.forEach(function (c, i) {
+      var sp = document.createElement('span');
+      sp.className = 'chip';
+      var b = document.createElement('b');
+      b.textContent = c.zh || c.en;
+      b.title = c.en;
+      var x = document.createElement('i');
+      x.textContent = '✕';
+      x.addEventListener('click', function () { negChips.splice(i, 1); negRenderChips(); negRun(); });
+      sp.appendChild(b); sp.appendChild(x);
+      negChipsBox.appendChild(sp);
+    });
+  }
+  function negAddChip(raw) {
+    var r = resolveName(raw);
+    if (!r) return;
+    if (negChips.some(function (c) { return c.en.toLowerCase() === r.en.toLowerCase(); })) return;
+    negChips.push({ en: r.en, zh: r.resolved ? zhName(r.en) : raw, resolved: r.resolved });
+    negRenderChips();
+  }
+  function negTargets() {
+    var list = negChips.slice();
+    negFavs.forEach(function (f) {
+      if (!list.some(function (c) { return c.en.toLowerCase() === String(f).toLowerCase(); }))
+        list.push({ en: f, zh: zhName(f), fav: true, resolved: true });
+    });
+    return list;
+  }
+  function hasQueue() { return !!document.querySelector('#scrollingContainer .queueContainer'); }
+  function negItems() {
+    var lim = negLimitValue();
+    var out = [];
+    document.querySelectorAll('#scrollingContainer .queueItem').forEach(function (it) {
+      if (!anteInRange(it.dataset.ante)) return;
+      if ((it.dataset.mods || '').split(',').indexOf('Negative') < 0) return;
+      var idx = parseInt(it.dataset.idx || '0', 10);
+      if (!(idx > 0) || idx > lim) return;
+      out.push({ en: it.dataset.en, ante: parseInt(it.dataset.ante, 10), idx: idx, pack: '' });
+    });
+    document.querySelectorAll('#scrollingContainer .packCard').forEach(function (it) {
+      if (!anteInRange(it.dataset.ante)) return;
+      if ((it.dataset.mods || '').split(',').indexOf('Negative') < 0) return;
+      out.push({ en: it.dataset.en, ante: parseInt(it.dataset.ante, 10), idx: 0, pack: it.dataset.pack || '' });
+    });
+    return out;
+  }
+  function negPosText(it) {
+    return '第' + cnNum(it.ante) + '底注' + (it.idx > 0 ? '第' + it.idx + '个' : '·包内' + (it.pack ? '（' + zhName(it.pack) + '）' : ''));
+  }
+  function negMatch(it, c) {
+    var en = String(it.en || '').toLowerCase();
+    var q = String(c.en || '').toLowerCase();
+    if (c.resolved) return en === q;
+    return en === q || en.indexOf(q) >= 0 || zhName(it.en).toLowerCase().indexOf(q) >= 0;
+  }
+  function negRun() {
+    negByCard.innerHTML = '';
+    negByAnte.innerHTML = '';
+    if (!hasQueue()) return;
+    var items = negItems();
+    // ① 按牌列举：选中的每张牌 → 第 X 底注第 Y 个
+    var targets = negTargets();
+    if (!targets.length) {
+      negByCard.innerHTML = '<div class="qnone">先在上方搜索或点常用选择牌名</div>';
+    } else {
+      var lim = negLimitValue();
+      targets.forEach(function (c) {
+        var line = document.createElement('div');
+        line.className = 'qline';
+        var nm = document.createElement('span');
+        nm.className = 'qname';
+        nm.textContent = (c.fav ? '★ ' : '') + (c.zh || c.en);
+        line.appendChild(nm);
+        var locs = items.filter(function (it) { return negMatch(it, c); })
+          .sort(function (a, b) { return a.ante - b.ante || a.idx - b.idx; })
+          .map(negPosText);
+        if (locs.length) {
+          line.appendChild(document.createTextNode(locs.join('，')));
+        } else {
+          var no = document.createElement('span');
+          no.className = 'qnone';
+          no.textContent = '（未找到负片；限每底注第 ' + lim + ' 个以内）';
+          line.appendChild(no);
+        }
+        negByCard.appendChild(line);
+      });
+    }
+    // ② 按底注列举：每底注下全部负片
+    if (!items.length) {
+      negByAnte.innerHTML = '<div class="qnone">当前范围/上限内没有负片</div>';
+    } else {
+      var byAnte = {};
+      items.forEach(function (it) { (byAnte[it.ante] = byAnte[it.ante] || []).push(it); });
+      Object.keys(byAnte).map(Number).sort(function (a, b) { return a - b; }).forEach(function (a) {
+        var line = document.createElement('div');
+        line.className = 'qline';
+        var nm = document.createElement('span');
+        nm.className = 'qname';
+        nm.textContent = '第' + cnNum(a) + '底注';
+        line.appendChild(nm);
+        var parts = byAnte[a].sort(function (x, y) { return x.idx - y.idx; }).map(function (it) {
+          return zhName(it.en) + (it.idx > 0 ? ' 第' + it.idx + '个' : ' 包内' + (it.pack ? '（' + zhName(it.pack) + '）' : ''));
+        });
+        line.appendChild(document.createTextNode(parts.join('、')));
+        negByAnte.appendChild(line);
+      });
+    }
+  }
+  function negHideSuggest() { negSuggest.hidden = true; negSuggest.innerHTML = ''; }
+  function negShowSuggest() {
+    var q = negInput.value.trim().toLowerCase();
+    var merged = [], seen = {};
+    function push(n) { if (n && !seen[n]) { seen[n] = 1; merged.push(n); } }
+    if (!q) {
+      negFavs.forEach(push);
+      if (!merged.length) { negHideSuggest(); return; }
+    } else {
+      negFavs.forEach(push);
+      (window.SOUL_CATALOG || []).forEach(push);
+      distinctNames().forEach(push);
+      merged = merged.filter(function (n) {
+        return n.toLowerCase().indexOf(q) >= 0 || zhName(n).toLowerCase().indexOf(q) >= 0;
+      }).slice(0, 25);
+      if (!merged.length) { negHideSuggest(); return; }
+    }
+    negSuggest.innerHTML = '';
+    merged.forEach(function (n) {
+      var d = document.createElement('div');
+      d.dataset.name = n;
+      var t = document.createElement('span');
+      var z = zhName(n);
+      t.textContent = z !== n ? z + ' (' + n + ')' : n;
+      var star = document.createElement('span');
+      star.className = 'favstar' + (negIsFav(n) ? ' on' : '');
+      star.textContent = negIsFav(n) ? '★' : '☆';
+      star.title = negIsFav(n) ? '取消常用（负片栏专用）' : '设为常用（负片栏专用）';
+      star.addEventListener('mousedown', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        negToggleFav(n);
+        negShowSuggest();
+      });
+      d.appendChild(t); d.appendChild(star);
+      d.addEventListener('mousedown', function (e) {
+        if (e.target === star) return;
+        e.preventDefault();
+        negAddChip(n);
+        negInput.value = '';
+        negHideSuggest();
+        negRun();
+      });
+      negSuggest.appendChild(d);
+    });
+    negSuggest.hidden = false;
+  }
+  negInput.addEventListener('input', negShowSuggest);
+  negInput.addEventListener('focus', negShowSuggest);
+  negInput.addEventListener('blur', function () { setTimeout(negHideSuggest, 150); });
+  negInput.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    var first = negSuggest.hidden ? null : negSuggest.querySelector('div');
+    negAddChip(first ? first.dataset.name : negInput.value);
+    negInput.value = '';
+    negHideSuggest();
+    negRun();
+  });
+  document.getElementById('neg-btn').addEventListener('click', function () {
+    if (negInput.value.trim()) { negAddChip(negInput.value); negInput.value = ''; negHideSuggest(); }
+    negRun();
+  });
+  negLimitInput.addEventListener('input', function () { scheduleRegen(); negRun(); });
+  negLimitInput.addEventListener('change', function () { scheduleRegen(); negRun(); });
+  negRenderFavs();
+
+  // ---------- 幻灵牌检索（左侧；勾名单 → 每张列出出现的底注） ----------
+  var specToggle = document.getElementById('spec-toggle');
+  var specList = document.getElementById('spec-list');
+  var specResults = document.getElementById('spec-results');
+  var specChecked = null; // {en:bool}，等 UI.js 的 SOUL_SPECTRAL 就绪后再初始化
+  var SPEC_DEFAULT = ['Aura', 'Ectoplasm', 'Deja Vu', 'Cryptid', 'The Soul'];
+  function ensureSpec() {
+    if (specChecked || !window.SOUL_SPECTRAL) return;
+    specChecked = {};
+    window.SOUL_SPECTRAL.forEach(function (en) { specChecked[en] = SPEC_DEFAULT.indexOf(en) >= 0; });
+  }
+  function renderSpecList() {
+    ensureSpec();
+    if (!specChecked || !window.SOUL_SPECTRAL) return;
+    specList.innerHTML = '';
+    window.SOUL_SPECTRAL.forEach(function (en) {
+      var lab = document.createElement('label');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!specChecked[en];
+      cb.addEventListener('change', function () { specChecked[en] = cb.checked; specRun(); });
+      var sp = document.createElement('span');
+      sp.textContent = zhName(en);
+      sp.title = en;
+      lab.appendChild(cb); lab.appendChild(sp);
+      specList.appendChild(lab);
+    });
+  }
+  specToggle.addEventListener('click', function () {
+    specList.hidden = !specList.hidden;
+    specToggle.textContent = specList.hidden ? '展开名单 ▾' : '收起名单 ▴';
+    if (!specList.hidden) renderSpecList();
+  });
+  function specRun() {
+    ensureSpec();
+    specResults.innerHTML = '';
+    if (!specChecked || !hasQueue()) return;
+    var checked = window.SOUL_SPECTRAL.filter(function (en) { return specChecked[en]; });
+    if (!checked.length) { specResults.innerHTML = '<div class="qnone">请勾选要检索的幻灵牌</div>'; return; }
+    var hits = {};
+    ['.queueItem', '.packCard'].forEach(function (sel) {
+      document.querySelectorAll('#scrollingContainer ' + sel).forEach(function (it) {
+        var en = it.dataset.en;
+        if (!en || checked.indexOf(en) < 0) return;
+        if (!anteInRange(it.dataset.ante)) return;
+        var a = parseInt(it.dataset.ante, 10);
+        if (isNaN(a)) return;
+        (hits[en] = hits[en] || {})[a] = true;
+      });
+    });
+    checked.forEach(function (en) {
+      var line = document.createElement('div');
+      line.className = 'qline';
+      var nm = document.createElement('span');
+      nm.className = 'qname';
+      nm.textContent = zhName(en);
+      line.appendChild(nm);
+      var antees = Object.keys(hits[en] || {}).map(Number).sort(function (a, b) { return a - b; });
+      if (antees.length) {
+        line.appendChild(document.createTextNode(antees.map(function (a) { return '第' + cnNum(a) + '底注'; }).join('，')));
+      } else {
+        var no = document.createElement('span');
+        no.className = 'qnone';
+        no.textContent = '（本范围内未出现）';
+        line.appendChild(no);
+      }
+      specResults.appendChild(line);
+    });
+  }
+
+  // ---------- 商店栏数变化：重新渲染（soulAfterRender 会重新执行查询） ----------
+  var groupInput = document.getElementById('group-size');
+  function onGroupChange() {
+    if (window.soulRender) window.soulRender();
+  }
+  groupInput.addEventListener('input', onGroupChange);
+  groupInput.addEventListener('change', onGroupChange);
+  // 每次渲染后把已选项规范成渲染列表里的确切牌名，再刷新结果（只列举，不跳转）
+  window.soulAfterRender = function () {
+    var names = distinctNames();
+    chips.forEach(function (c) {
+      if (c.resolved) return;
+      var i;
+      for (i = 0; i < names.length; i++) {
+        if (names[i].toLowerCase() === c.en.toLowerCase()) { c.en = names[i]; break; }
+      }
+      if (i === names.length) for (i = 0; i < names.length; i++) {
+        if (zhName(names[i]) === c.en) { c.en = names[i]; break; }
+      }
+      if (i < names.length) { c.zh = zhName(c.en); c.resolved = true; }
+    });
+    renderChips();
+    renderRoster();
+    applyAnteFilter();
+    runQuery();
+    negRun();
+    specRun();
+  };
+
+
+  // ---------- URL 参数 ----------
+  window.addEventListener('DOMContentLoaded', function () {
+    // UI.js 会把渲染容器挂到 body，这里挪进渲染面板
+    var box = document.getElementById('render-box');
+    var scroll = document.getElementById('scrollingContainer');
+    if (scroll) box.appendChild(scroll);
+    renderSpecList(); // SOUL_SPECTRAL 此时已由 UI.js 定义
+    renderRoster();
+
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('unlocks')) {
+      try {
+        selectedOptions = decodeUnlocks(p.get('unlocks'));
+      } catch (e) {}
+    }
+    var cardsParam = p.get('cards') || p.get('cardsPerAnte'); // 兼容旧参名 cardsPerAnte
+    if (cardsParam) {
+      // 兼容旧链接 ?cards=15,50,... → 写入「显示牌数」state（未给的底注保持默认；钳制防挂死）
+      cardsParam.split(',').forEach(function (x, i) {
+        var v = parseInt(x, 10);
+        if (!isNaN(v)) anteCounts[i + 1] = Math.max(0, Math.min(MAX_CARDS, v));
+      });
+    }
+    // 牌组/难度/版本：仅当值存在于选项中才采用（无效值保持默认）
+    function setSelIfValid(sel, val) {
+      if (!val) return;
+      for (var i = 0; i < sel.options.length; i++) if (sel.options[i].value === val) { sel.value = val; return; }
+    }
+    setSelIfValid(deckSelect, p.get('deck'));
+    setSelIfValid(stakeSelect, p.get('stake'));
+    setSelIfValid(versionSelect, p.get('version'));
+    if (p.get('hunt')) p.get('hunt').split(',').forEach(function (t) { addChip(t); });
+    if (p.get('seed')) {
+      seedInput.value = filterSeed(p.get('seed'));
+      instantAnalysis = true;
+      if (document.getElementById('status').textContent.indexOf('就绪') >= 0) autoRun();
+    }
+    // 直达/验证用：?suggest=关键词 自动展开搜索建议
+    if (p.get('suggest')) { huntInput.value = p.get('suggest'); showSuggest(); }
+  });
+})();
+</script>
+</body>
+</html>

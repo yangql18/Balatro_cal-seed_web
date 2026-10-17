@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balatro 分值计算器</title>
+<style>
+  :root {
+    --bg: #1a1023; --panel: #241733; --panel2: #2d1e40; --line: #3d2a58;
+    --text: #f0e6ff; --dim: #9b86c0; --accent: #ff6b9d; --gold: #ffd166;
+    --green: #6be3a4; --blue: #6ec6ff; --red: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; }
+  header { background: linear-gradient(90deg, #2d1e40, #4a2663); padding: 14px 20px; display: flex; align-items: baseline; gap: 16px; border-bottom: 2px solid var(--accent); }
+  header h1 { margin: 0; font-size: 20px; color: var(--gold); }
+  header .sub { color: var(--dim); font-size: 12px; }
+  main { display: grid; grid-template-columns: 340px 1fr 300px; gap: 12px; padding: 12px; max-width: 1500px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 14px; color: var(--accent); border-bottom: 1px dashed var(--line); padding-bottom: 6px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+  label.f { font-size: 12px; color: var(--dim); display: flex; flex-direction: column; gap: 2px; }
+  input, select { background: var(--panel2); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 5px 7px; font-size: 13px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  input[type=number] { width: 72px; }
+  button { background: var(--accent); border: none; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold; }
+  button:hover { filter: brightness(1.15); }
+  button.sec { background: var(--panel2); border: 1px solid var(--line); color: var(--text); font-weight: normal; }
+  button.mini { padding: 2px 7px; font-size: 12px; background: var(--panel2); border: 1px solid var(--line); color: var(--dim); border-radius: 5px; }
+  button.mini:hover { color: var(--text); border-color: var(--accent); }
+  .cardchip { display: inline-flex; align-items: center; gap: 3px; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font-size: 13px; cursor: grab; user-select: none; margin: 2px; }
+  .cardchip.red { color: #ff8a8a; }
+  .cardchip.black { color: #cdd3ff; }
+  .cardchip.dragging { opacity: .4; }
+  .cardchip.dropbefore { border-left: 3px solid var(--gold); }
+  .zone { min-height: 44px; background: rgba(0,0,0,.22); border: 1px dashed var(--line); border-radius: 8px; padding: 4px; margin-bottom: 8px; }
+  .zone .zh { font-size: 11px; color: var(--dim); margin: 2px 4px; }
+  .jokerrow { display: flex; align-items: center; gap: 5px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.05); flex-wrap: wrap; }
+  .jokerrow select { max-width: 130px; }
+  .lvl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+  .lvl-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .lvl-item .name { flex: 1; color: var(--text); }
+   .lvl-item input[type=number] { width: 56px; }
+   .lvl-item .planet { width: 44px; display: none; }
+   .lvl-item .planet.show { display: inline-block; }
+   .lvl-item .playedtot, .lvl-item .playedrnd { width: 40px; }
+   .eye-hands { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; align-items: center; }
+   .eye-hands label { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; cursor: pointer; }
+   .eye-hands input { margin: 0; }
+  .jokerrow .ab { display: flex; gap: 4px; flex-wrap: wrap; }
+  .jokerrow .ab label { font-size: 11px; color: var(--dim); display: flex; flex-direction: column; }
+  .jokerrow .ab input { width: 64px; padding: 3px 5px; font-size: 12px; }
+  .tag { font-size: 11px; padding: 1px 6px; border-radius: 10px; cursor: pointer; border: 1px solid var(--line); color: var(--dim); user-select: none; }
+  .tag.on { background: var(--red); color: #fff; border-color: var(--red); }
+  .tag.on2 { background: var(--blue); color: #111; border-color: var(--blue); }
+  .tag.debuff { background: var(--red); color: #fff; border-color: var(--red); }
+  #result { font-family: Consolas, monospace; font-size: 13px; white-space: pre-wrap; line-height: 1.55; }
+  #result .score { font-size: 26px; color: var(--gold); font-weight: bold; font-family: inherit; }
+  #result .rng { color: var(--green); }
+  #result .err { color: var(--red); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .tabs button { flex: 1; background: var(--panel2); color: var(--dim); border: 1px solid var(--line); font-weight: normal; padding: 6px; border-radius: 6px 6px 0 0; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  table.an { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.an th, table.an td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.an th { color: var(--dim); font-weight: normal; }
+  table.an .pos { color: var(--green); }
+  table.an .neg { color: var(--red); }
+  .hint { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.5; }
+  .sbar { display: flex; border-bottom: 2px solid var(--accent); }
+  .sbar a { flex: 1; text-align: center; padding: 10px 0; font-size: 15px; font-weight: bold; color: var(--dim); text-decoration: none; background: var(--panel); border-right: 1px solid var(--line); transition: .15s; }
+  .sbar a:last-child { border-right: none; }
+  .sbar a:hover { color: var(--text); background: var(--panel2); }
+  .sbar a.on { background: var(--accent); color: #fff; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="sbar">
+  <a href="index.html" class="on">计算器</a>
+  <a href="seed.html">查种器</a>
+</nav>
+<header>
+  <h1>Balatro 分值计算器</h1>
+  <span class="sub">无尽模式极限计算 · 期望值主体 · 随机标注区间 · 与源码一致</span>
+</header>
+<main>
+  <!-- 左：牌与状态 -->
+  <section>
+    <div class="panel">
+      <h2>打出的牌 <span style="color:var(--dim);font-size:11px">(拖拽排序)</span></h2>
+      <div class="zone" id="zone-played" data-zone="played"><div class="zh">点上方按钮添加，或从手持拖入</div></div>
+      <div class="row">
+        <button class="mini" id="add-played">+ 添加打出牌</button>
+        <button class="mini" id="clear-played">清空</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>手持牌</h2>
+      <div class="zone" id="zone-hand" data-zone="hand"></div>
+      <div class="row">
+        <button class="mini" id="add-hand">+ 添加手牌</button>
+      </div>
+      <div class="hint">单击牌打开编辑（点数/花色/强化/版本/印章/负片）；点「⧉」复制，点「×」删除；拖拽排序或换区。</div>
+    </div>
+    <div class="panel" id="editor-panel" style="display:none">
+      <h2 id="editor-title">编辑牌</h2>
+      <div class="row">
+        <label class="f">点数<select id="ed-rank"></select></label>
+        <label class="f">花色<select id="ed-suit"></select></label>
+      </div>
+      <div class="row">
+        <label class="f">强化<select id="ed-enh"></select></label>
+        <label class="f">版本<select id="ed-edition"></select></label>
+        <label class="f">印章<select id="ed-seal"></select></label>
+      </div>
+      <div class="row">
+        <span class="tag" id="ed-negative" title="快速切换负片版本">负片</span>
+        <span class="tag" id="ed-debuff">Boss减益(手动)</span>
+        <button class="mini" id="ed-del">删除此牌</button>
+        <button class="mini" id="ed-done">完成</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>小丑</h2>
+      <div class="row">
+        <input type="text" id="joker-search" placeholder="搜索要添加的小丑…" style="flex:1;min-width:100px">
+      </div>
+      <div class="row">
+        <select id="add-joker-sel" style="flex:1"></select>
+        <button class="mini" id="add-joker">+ 添加</button>
+        <button class="mini" id="add-placeholder">+ 占位</button>
+      </div>
+      <div class="hint">上方搜索过滤「添加」下拉；★收藏的排在下拉最前。列表内勾「禁」=失效、「减」=减益（如 Crimson Heart），可拖拽排序，成长/状态字段按需填。</div>
+      <div id="joker-list" style="margin-top:6px"></div>
+    </div>
+  </section>
+
+  <!-- 中：全局输入 + 结果 -->
+  <section>
+    <div class="panel">
+      <h2>全局状态</h2>
+      <div class="row">
+        <label class="f">Boss<select id="g-boss"></select></label>
+        <span class="tag" id="g-boss-off" title="Boss 效果已解除（如 Verdant Leaf 已清）">Boss已解除</span>
+        <span class="tag" id="g-observatory">天文台</span>
+        <label class="f">牌组<select id="g-decktype"><option value="normal">普通</option><option value="plasma">等离子</option></select></label>
+      </div>
+      <div class="row" id="boss-extra" style="margin-top:6px;display:none">
+        <label class="f" id="boss-eye-wrap" style="display:none;flex:none">眼·已用牌型（可多选）</label>
+        <div id="g-eye-hands" class="eye-hands" style="display:none"></div>
+        <label class="f" id="boss-mouth-wrap" style="display:none">嘴·仅允许<select id="g-mouth-hand"></select></label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <span style="font-size:13px;font-weight:bold;color:var(--accent)">牌型等级</span>
+        <span id="obs-hint" style="font-size:11px;color:var(--dim);display:none">（右侧=持有该牌型星球牌张数）</span>
+      </div>
+      <div id="g-levels"></div>
+      <div class="hint">上=牌型等级（星球升级后基础值）。天文台勾选后，每档旁可填持有的对应星球牌张数（每张×1.5）。弃牌/手牌/金币等状态在对应小丑行填写。</div>
+    </div>
+
+    <div class="panel">
+      <h2>操作</h2>
+      <div class="row">
+        <button id="btn-calc">计算分数</button>
+        <button class="sec" id="btn-opt">最优排序</button>
+        <button class="sec" id="btn-full">全量出牌搜索</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>结果</h2>
+      <div id="result"><span style="color:var(--dim)">点击「计算分数」…</span></div>
+    </div>
+  </section>
+
+  <!-- 右：替换/等效 + 最优排序 -->
+  <section>
+    <div class="panel" id="panel-analysis" style="display:none">
+      <div class="tabs">
+        <button class="active" data-tab="replace">替换计算</button>
+        <button data-tab="equiv">等效乘率</button>
+      </div>
+      <div id="tab-replace">
+        <div class="hint">搜索过滤候选；选一张（可改版本/参数），点计算：逐个替换现有小丑（负片跳过），每次取最优摆法。★收藏置顶。</div>
+        <div class="row" style="margin-top:6px">
+          <input type="text" id="cand-search" placeholder="搜索候选小丑…" style="flex:1;min-width:100px">
+        </div>
+        <div class="row">
+          <select id="cand-key" style="flex:1"></select>
+          <select id="cand-edition"></select>
+          <button id="btn-replace">计算</button>
+        </div>
+        <div id="cand-opts" class="row"></div>
+        <div id="replace-out"></div>
+        <div id="min-replace"></div>
+      </div>
+      <div id="tab-equiv" style="display:none"></div>
+    </div>
+    <div class="panel" id="panel-opt" style="display:none">
+      <h2>最优排序结果</h2>
+      <div id="opt-result" style="font-size:13px;"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="sec" id="btn-apply-opt">应用此排序</button>
+      </div>
+      <div class="hint">括号内数字=同分组号，组内相邻交换不掉分；如 A(0)-B(1)-C(1)-D(2)。「手牌」=未选入本手的剩余牌（全量搜索会改选出牌组合）。</div>
+    </div>
+  </section>
+</main>
+<script src="core/names.js"></script>
+<script src="core/data.js"></script>
+<script src="core/hand_eval.js"></script>
+<script src="core/jokers.js"></script>
+<script src="core/engine.js"></script>
+<script src="core/analyze.js"></script>
+<script src="core/format.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
