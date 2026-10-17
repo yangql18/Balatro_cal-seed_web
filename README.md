@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/33601025/README.md)
+[README.md](https://github.com/user-attachments/files/33603039/README.md)
 # Balatro 分值计算器 + 种子查种器
 
 纯前端的 Balatro（小丑牌）工具集，纯静态托管即可运行，无需后端。包含两个独立页面：
@@ -7,6 +7,11 @@
 | --- | --- | --- |
 | 分值计算器 | `index.html` | 精确计算一手牌的得分，并做小丑/出牌优化分析 |
 | 种子查种器 | `seed.html` | 输入种子，模拟生成全进程商店/包/券/标签并按名检索定位 |
+
+## 在线使用
+
+- 站点：https://balatro-cal.yangql.online/
+- 源码：https://github.com/yangql18/Balatro_cal-seed_web
 
 ## 工具一：分值计算器（`index.html`）
 
@@ -79,6 +84,8 @@ soul/images/Vouchers.png
 soul/images/stickers.png
 soul/images/tags.png
 ```
+
+> 注意：`app.js` 和 `soul/wasm-bin.js` 缺一不可。漏 `app.js` → 计算器整页失效；漏 `soul/wasm-bin.js` → 查种器报 wasm fetching failed（Emscripten 取不到 WASM）。
 
 **不要上传**（本地/构建产物，运行时不需要）：
 
